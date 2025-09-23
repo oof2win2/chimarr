@@ -1,12 +1,13 @@
 use axum::{
     Json, Router,
+    extract::State,
     routing::{get, post},
 };
 use reqwest::StatusCode;
 
-use crate::event_sources::radarr;
+use crate::{AppState, event_sources::radarr};
 
-async fn radarr_health() -> (StatusCode, Json<radarr::RadarrStatus>) {
+async fn radarr_health(State(ctx): State<AppState>) -> (StatusCode, Json<radarr::RadarrStatus>) {
     let status = radarr::get_status().await;
     if status.is_err() {
         eprintln!("Error fetching status: {:?}", status);
@@ -16,6 +17,31 @@ async fn radarr_health() -> (StatusCode, Json<radarr::RadarrStatus>) {
     (StatusCode::OK, Json(status.unwrap()))
 }
 
-pub fn get_router() -> Router {
-    Router::new().route("/health", get(radarr_health))
+async fn enable_radarr(State(ctx): State<AppState>) -> StatusCode {
+    let res = radarr::enable(ctx).await;
+    if res.is_ok() {
+        StatusCode::OK
+    } else {
+        let error = res.err().unwrap();
+        eprintln!("Error enabling radarr {}", error);
+        StatusCode::INTERNAL_SERVER_ERROR
+    }
+}
+
+async fn disable_radarr(State(ctx): State<AppState>) -> StatusCode {
+    let res = radarr::disable(ctx).await;
+    if res.is_ok() {
+        StatusCode::OK
+    } else {
+        let error = res.err().unwrap();
+        eprintln!("Error disabling radarr {}", error);
+        StatusCode::INTERNAL_SERVER_ERROR
+    }
+}
+
+pub fn get_router() -> Router<AppState> {
+    Router::new()
+        .route("/health", get(radarr_health))
+        .route("/enable", post(enable_radarr))
+        .route("/disable", post(disable_radarr))
 }
