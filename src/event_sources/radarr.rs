@@ -36,8 +36,6 @@ pub async fn get_status() -> anyhow::Result<RadarrStatus> {
     let res = reqwest::get(url).await?;
     let body = res.text().await?;
 
-    println!("{}", body);
-
     let body: RadarrStatus = serde_json::from_str(&body)?;
 
     Ok(body)
