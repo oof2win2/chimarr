@@ -6,5 +6,7 @@ pub trait EventDispatcher {
     fn new() -> Self
     where
         Self: Sized;
-    async fn send_message(&self, msg: Notification) -> ();
+
+    fn send_message(&mut self, msg: Notification) -> ();
+    async fn flush_messages(&mut self) -> anyhow::Result<()>;
 }

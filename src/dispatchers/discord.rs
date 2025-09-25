@@ -3,7 +3,7 @@ use std::panic;
 use crate::{config, dispatchers::EventDispatcher, notifications::Notification};
 use serde::Serialize;
 
-#[derive(Serialize)]
+#[derive(Serialize, Clone)]
 struct DiscordWebhookBody {
     content: String,
 }
@@ -12,6 +12,7 @@ struct DiscordWebhookBody {
 pub struct DiscordDispatcher {
     webhook_url: String,
     reqwest: reqwest::Client,
+    message_queue: Vec<DiscordWebhookBody>,
 }
 impl EventDispatcher for DiscordDispatcher {
     fn new() -> DiscordDispatcher {
@@ -25,10 +26,11 @@ impl EventDispatcher for DiscordDispatcher {
         DiscordDispatcher {
             webhook_url: webhook_url.unwrap(),
             reqwest: reqwest_client,
+            message_queue: vec![],
         }
     }
 
-    async fn send_message(&self, msg: Notification) -> () {
+    fn send_message(&mut self, msg: Notification) -> () {
         let body = DiscordWebhookBody {
             content: format!(
                 "Notification {} ({}): {}",
@@ -36,11 +38,20 @@ impl EventDispatcher for DiscordDispatcher {
             )
             .to_string(),
         };
-        self.reqwest
-            .post(&self.webhook_url)
-            .query(&[("wait", "true")])
-            .json(&body)
-            .send()
-            .await;
+        self.message_queue.push(body);
+    }
+
+    async fn flush_messages(&mut self) -> anyhow::Result<()> {
+        // we use .drain so that we don't void the messages that didn't make it through
+        for msg in self.message_queue.drain(..) {
+            self.reqwest
+                .post(&self.webhook_url)
+                .query(&[("wait", "true")])
+                .json(&msg)
+                .send()
+                .await?;
+        }
+
+        Ok(())
     }
 }

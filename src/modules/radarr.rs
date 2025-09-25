@@ -101,15 +101,18 @@ pub async fn get_status() -> anyhow::Result<RadarrStatus> {
 async fn poll_status(ctx: AppState) -> anyhow::Result<()> {
     let status = get_status().await?;
 
-    let mut notification_manager = ctx.notifications.lock().unwrap();
-    status
+    let notifications_to_send = status
         .service_status
         .into_iter()
         .map(|notif| BareNotification {
             notification_type: notif.status_type.into(),
             message: notif.message,
-        })
-        .for_each(|notif| notification_manager.send_notification_sync(notif));
+        });
+
+    let mut notification_manager = ctx.notifications.lock().await;
+    for notif in notifications_to_send {
+        notification_manager.send_notification(notif).await;
+    }
 
     Ok(())
 }

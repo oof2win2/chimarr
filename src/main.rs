@@ -1,5 +1,6 @@
 use axum::{Router, extract::State, http::StatusCode, response::IntoResponse, routing::get};
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
+use tokio::sync::Mutex;
 use tokio_cron::Scheduler;
 
 use crate::notifications::NotificationManager;
@@ -25,7 +26,7 @@ async fn handler_404() -> impl IntoResponse {
 #[derive(Clone)]
 struct AppState {
     scheduler: Scheduler,
-    counter: Arc<Mutex<i32>>,
+    counter: Arc<std::sync::Mutex<i32>>,
     notifications: Arc<Mutex<NotificationManager>>,
 }
 
@@ -33,13 +34,16 @@ struct AppState {
 async fn main() {
     config::init_config("./config.json").unwrap();
 
-    let notification_manager = NotificationManager::new().await;
+    let mut scheduler = Scheduler::utc();
+    let notification_manager = NotificationManager::new(&mut scheduler).await;
 
     let state = AppState {
-        scheduler: Scheduler::utc(),
-        counter: Arc::new(Mutex::new(1)),
+        scheduler,
+        counter: Arc::new(std::sync::Mutex::new(1)),
         notifications: Arc::new(Mutex::new(notification_manager)),
     };
+
+    // Scheduler will run automatically when jobs are added
 
     let host = config::app::server::host().unwrap();
     let port = config::app::server::port().unwrap();

@@ -1,9 +1,12 @@
 use std::{
     fmt::Display,
     hash::{DefaultHasher, Hash, Hasher},
+    sync::Arc,
 };
+use tokio::sync::Mutex;
 
 use nanoid::nanoid;
+use tokio_cron::{Job, Scheduler};
 
 use crate::dispatchers::{self, EventDispatcher, discord::DiscordDispatcher};
 
@@ -47,19 +50,28 @@ pub struct Notification {
 
 pub struct NotificationManager {
     notifications: Vec<Notification>,
-    discord: DiscordDispatcher,
+    discord: Arc<Mutex<DiscordDispatcher>>,
 }
 impl NotificationManager {
-    pub async fn new() -> NotificationManager {
-        let discord = dispatchers::discord::DiscordDispatcher::new();
+    pub async fn new(scheduler: &mut Scheduler) -> NotificationManager {
+        let discord = Arc::new(Mutex::new(dispatchers::discord::DiscordDispatcher::new()));
+        let discord_clone = discord.clone();
+
+        scheduler.add(Job::named("Send all messages", "* * * * * *", move || {
+            let discord_clone_inner = discord_clone.clone();
+            async move {
+                let mut discord_guard = discord_clone_inner.lock().await;
+                let _ = discord_guard.flush_messages().await;
+            }
+        }));
 
         NotificationManager {
             notifications: vec![],
-            discord: discord,
+            discord,
         }
     }
 
-    pub fn send_notification_sync(&mut self, notif: BareNotification) {
+    pub async fn send_notification(&mut self, notif: BareNotification) {
         if self.has_existing_notification(&notif) {
             return;
         }
@@ -75,11 +87,7 @@ impl NotificationManager {
 
         self.notifications.push(notification.clone());
 
-        // Spawn a task to send the notification without holding the mutex
-        let discord = self.discord.clone();
-        tokio::spawn(async move {
-            discord.send_message(notification).await;
-        });
+        self.discord.lock().await.send_message(notification);
     }
 
     fn has_existing_notification(&self, notif: &BareNotification) -> bool {
