@@ -5,16 +5,19 @@ use axum::{
 };
 use reqwest::StatusCode;
 
-use crate::{AppState, event_sources::radarr};
+use crate::{AppState, modules::radarr};
 
-async fn radarr_health(State(ctx): State<AppState>) -> (StatusCode, Json<radarr::RadarrStatus>) {
+#[axum::debug_handler]
+async fn radarr_health(
+    State(ctx): State<AppState>,
+) -> (StatusCode, Json<Option<radarr::RadarrStatus>>) {
     let status = radarr::get_status().await;
     if status.is_err() {
         eprintln!("Error fetching status: {:?}", status);
-        return (StatusCode::INTERNAL_SERVER_ERROR, Json(vec![]));
+        return (StatusCode::INTERNAL_SERVER_ERROR, Json(None));
     }
 
-    (StatusCode::OK, Json(status.unwrap()))
+    (StatusCode::OK, Json(Some(status.unwrap())))
 }
 
 async fn enable_radarr(State(ctx): State<AppState>) -> StatusCode {

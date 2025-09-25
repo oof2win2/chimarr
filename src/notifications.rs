@@ -1,4 +1,7 @@
-use std::hash::{DefaultHasher, Hash, Hasher};
+use std::{
+    fmt::Display,
+    hash::{DefaultHasher, Hash, Hasher},
+};
 
 use nanoid::nanoid;
 
@@ -9,17 +12,31 @@ pub enum NotificationType {
     Info,
     Error,
 }
+impl Display for NotificationType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            NotificationType::Info => {
+                write!(f, "INFO");
+                Ok(())
+            }
+            NotificationType::Error => {
+                write!(f, "Error");
+                Ok(())
+            }
+        }
+    }
+}
 
 pub struct BareNotification {
-    pub r#type: NotificationType,
+    pub notification_type: NotificationType,
     pub message: String,
 }
 
 #[derive(Debug, Clone)]
 pub struct Notification {
-    id: String,
-    r#type: NotificationType,
-    message: String,
+    pub id: String,
+    pub notification_type: NotificationType,
+    pub message: String,
     hash: u64,
 }
 
@@ -29,8 +46,7 @@ pub struct NotificationManager {
 }
 impl NotificationManager {
     pub async fn new() -> NotificationManager {
-        let discord = dispatchers::discord::DiscordDispatcher {};
-        discord.initialize().await;
+        let discord = dispatchers::discord::DiscordDispatcher::new();
 
         NotificationManager {
             notifications: vec![],
@@ -46,7 +62,7 @@ impl NotificationManager {
         let hash = self.hash_notif(&notif);
 
         let notification = Notification {
-            r#type: notif.r#type,
+            notification_type: notif.notification_type,
             message: notif.message,
             hash,
             id: nanoid!(),
@@ -72,7 +88,7 @@ impl NotificationManager {
     fn hash_notif(&self, notif: &BareNotification) -> u64 {
         let mut hasher = DefaultHasher::new();
         notif.message.hash(&mut hasher);
-        notif.r#type.hash(&mut hasher);
+        notif.notification_type.hash(&mut hasher);
         hasher.finish()
     }
 }

@@ -2,11 +2,11 @@ use axum::{Router, extract::State, http::StatusCode, response::IntoResponse, rou
 use std::sync::{Arc, Mutex};
 use tokio_cron::Scheduler;
 
-use crate::{dispatchers::EventDispatcher, notifications::NotificationManager};
+use crate::notifications::NotificationManager;
 
 mod config;
 mod dispatchers;
-mod event_sources;
+mod modules;
 mod notifications;
 mod routers;
 

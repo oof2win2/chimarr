@@ -10,6 +10,7 @@ pub struct AppConfig {
     pub database_path: String,
     pub logging: LoggingConfig,
     pub radarr: RadarrConfig,
+    pub discord: DiscordConfig,
 }
 
 // Hierarchical access modules
@@ -72,6 +73,18 @@ pub mod app {
             config().map(|c| c.apikey)
         }
     }
+
+    pub mod discord {
+        use super::*;
+
+        pub fn config() -> Result<DiscordConfig, ConfigError> {
+            super::config().map(|c| c.discord)
+        }
+
+        pub fn webhook_url() -> Result<String, ConfigError> {
+            config().map(|c| c.webhook_url)
+        }
+    }
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -90,6 +103,11 @@ pub struct LoggingConfig {
 pub struct RadarrConfig {
     pub url: String,
     pub apikey: String,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct DiscordConfig {
+    pub webhook_url: String,
 }
 
 // Global config instance

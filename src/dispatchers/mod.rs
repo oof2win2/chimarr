@@ -3,6 +3,8 @@ use crate::notifications::Notification;
 pub mod discord;
 
 pub trait EventDispatcher {
-    async fn initialize(&self) -> ();
+    fn new() -> Self
+    where
+        Self: Sized;
     async fn send_message(&self, msg: Notification) -> ();
 }
