@@ -10,6 +10,7 @@ use crate::dispatchers::{self, EventDispatcher, discord::DiscordDispatcher};
 #[derive(Hash, Debug, Clone)]
 pub enum NotificationType {
     Info,
+    Warning,
     Error,
 }
 impl Display for NotificationType {
@@ -19,8 +20,12 @@ impl Display for NotificationType {
                 write!(f, "INFO");
                 Ok(())
             }
+            NotificationType::Warning => {
+                write!(f, "WARNING");
+                Ok(())
+            }
             NotificationType::Error => {
-                write!(f, "Error");
+                write!(f, "ERROR");
                 Ok(())
             }
         }

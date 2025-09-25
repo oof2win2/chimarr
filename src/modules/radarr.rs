@@ -39,13 +39,22 @@ enum RadarrServiceStatusType {
     INFO,
     ERROR,
 }
+impl Into<NotificationType> for RadarrServiceStatusType {
+    fn into(self) -> NotificationType {
+        match self {
+            RadarrServiceStatusType::WARNING => NotificationType::Warning,
+            RadarrServiceStatusType::INFO => NotificationType::Info,
+            RadarrServiceStatusType::ERROR => NotificationType::Error,
+        }
+    }
+}
 
 #[derive(Deserialize, Serialize, Debug)]
 #[allow(dead_code)]
 pub struct SingleStatus {
     pub source: String,
     #[serde(rename(deserialize = "type"))]
-    pub status_type: String,
+    pub status_type: RadarrServiceStatusType,
     pub message: String,
 }
 pub type RadarrServiceStatus = Vec<SingleStatus>;
@@ -97,7 +106,7 @@ async fn poll_status(ctx: AppState) -> anyhow::Result<()> {
         .service_status
         .into_iter()
         .map(|notif| BareNotification {
-            notification_type: NotificationType::Info,
+            notification_type: notif.status_type.into(),
             message: notif.message,
         })
         .for_each(|notif| notification_manager.send_notification_sync(notif));
